@@ -217,3 +217,5 @@ Se comprobó `npm audit --omit=dev` sin vulnerabilidades conocidas en las depend
 Entregar el código, `package.json`, `package-lock.json`, `.gitignore`, `.env.example`, el SQL, la colección, el entorno público y este README. No publicar `.env`, `data/`, `node_modules/`, credenciales, tokens vigentes ni entornos locales. Las instrucciones para completar los datos de integrantes y registrar sus aportes reales están en [docs/ENTREGA.md](docs/ENTREGA.md).
 
 Referencias oficiales: [Express](https://expressjs.com/en/5x/api/), [SQLite en Node.js](https://nodejs.org/api/sqlite.html) y [jsonwebtoken](https://github.com/auth0/node-jsonwebtoken).
+
+Nota: ejecuta los comandos de instalación desde la raíz del proyecto.
