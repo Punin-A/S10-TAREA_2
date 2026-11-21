@@ -1,0 +1,2114 @@
+{
+  "info": {
+    "_postman_id": "a5f9c1c0-d71d-42a9-9640-279fb19dcabc",
+    "name": "Catálogo y favoritos - API REST",
+    "description": "Ejecutar 01, detener e iniciar Node.js con la misma base de datos y ejecutar 02 sin borrar el entorno. npm run test:postman realiza el reinicio automáticamente. Preparar credenciales y JWT realmente vencido con npm run postman:local. El entorno público no contiene secretos.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Antes del reinicio",
+      "item": [
+        {
+          "name": "01 - Catálogo público y cinco productos de ejemplo",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const run = pm.variables.replaceIn('{{$guid}}');",
+                  "pm.environment.set('emailA', 'a.' + run + '@example.test'); pm.environment.set('emailB', 'b.' + run + '@example.test');",
+                  "pm.environment.set('passwordA', 'Demo-A-' + run); pm.environment.set('passwordB', 'Demo-B-' + run);",
+                  "['tokenA', 'tokenB', 'adminToken', 'productId', 'userAId'].forEach(key => pm.environment.unset(key));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Catálogo inicial', () => { const products = pm.response.json().products; pm.expect(products.length).to.be.at.least(5); pm.environment.set('seedId', products[0].id); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/products"
+          }
+        },
+        {
+          "name": "02 - Registro correcto de A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Usuario creado con rol usuario', () => { const u = pm.response.json().user; pm.expect(u.id).to.be.a('number'); pm.expect(u.role).to.eql('usuario'); pm.expect(u.email).to.be.a('string'); });",
+                  "pm.environment.set('userAId', pm.response.json().user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario A Postman\",\n  \"email\": \"{{emailA}}\",\n  \"password\": \"{{passwordA}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "03 - Correo duplicado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario A Postman\",\n  \"email\": \"{{emailA}}\",\n  \"password\": \"{{passwordA}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "04 - Registro público rechaza rol administrador",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario B Postman\",\n  \"email\": \"{{emailB}}\",\n  \"password\": \"{{passwordB}}\",\n  \"role\": \"administrador\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "05 - Correo inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario B Postman\",\n  \"email\": \"correo-invalido\",\n  \"password\": \"{{passwordB}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "06 - Nombre vacío",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"   \",\n  \"email\": \"{{emailB}}\",\n  \"password\": \"{{passwordB}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "07 - Contraseña demasiado corta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario B Postman\",\n  \"email\": \"{{emailB}}\",\n  \"password\": \"corta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "08 - Credenciales incorrectas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailA}}\",\n  \"password\": \"Incorrecta-Postman-2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "09 - Login correcto de A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('JWT y rol correctos', () => { const data = pm.response.json(); pm.expect(data.token).to.be.a('string').and.not.empty; pm.expect(data.user.role).to.eql('usuario'); pm.expect(data.tokenType).to.eql('Bearer'); const payload = JSON.parse(atob(data.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); pm.expect(payload.exp).to.be.above(payload.iat); pm.expect(payload.sub).to.eql(String(data.user.id)); pm.environment.set('tokenA', data.token); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailA}}\",\n  \"password\": \"{{passwordA}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "10 - Registro correcto de B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Usuario creado con rol usuario', () => { const u = pm.response.json().user; pm.expect(u.id).to.be.a('number'); pm.expect(u.role).to.eql('usuario'); pm.expect(u.email).to.be.a('string'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario B Postman\",\n  \"email\": \"{{emailB}}\",\n  \"password\": \"{{passwordB}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "11 - Login correcto de B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('JWT y rol correctos', () => { const data = pm.response.json(); pm.expect(data.token).to.be.a('string').and.not.empty; pm.expect(data.user.role).to.eql('usuario'); pm.expect(data.tokenType).to.eql('Bearer'); const payload = JSON.parse(atob(data.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); pm.expect(payload.exp).to.be.above(payload.iat); pm.expect(payload.sub).to.eql(String(data.user.id)); pm.environment.set('tokenB', data.token); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailB}}\",\n  \"password\": \"{{passwordB}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "12 - Login administrador inicializado localmente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('JWT y rol correctos', () => { const data = pm.response.json(); pm.expect(data.token).to.be.a('string').and.not.empty; pm.expect(data.user.role).to.eql('administrador'); pm.expect(data.tokenType).to.eql('Bearer'); const payload = JSON.parse(atob(data.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); pm.expect(payload.exp).to.be.above(payload.iat); pm.expect(payload.sub).to.eql(String(data.user.id)); pm.environment.set('adminToken', data.token); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "13 - Favoritos sin token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites"
+          }
+        },
+        {
+          "name": "14 - Favoritos con JWT firmado y vencido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{expiredToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites"
+          }
+        },
+        {
+          "name": "15 - Crear producto sin token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Producto Postman\",\n  \"description\": \"Producto ficticio para verificar el CRUD.\",\n  \"category\": \"Pruebas Postman\",\n  \"price\": 15.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "16 - Usuario no puede crear productos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Producto Postman\",\n  \"description\": \"Producto ficticio para verificar el CRUD.\",\n  \"category\": \"Pruebas Postman\",\n  \"price\": 15.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "17 - Usuario no puede actualizar productos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products/{{seedId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Producto Postman\",\n  \"description\": \"Producto ficticio para verificar el CRUD.\",\n  \"category\": \"Pruebas Postman\",\n  \"price\": 15.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "18 - Usuario no puede eliminar productos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/products/{{seedId}}"
+          }
+        },
+        {
+          "name": "19 - Precio cero inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Producto Postman\",\n  \"description\": \"Producto ficticio para verificar el CRUD.\",\n  \"category\": \"Pruebas Postman\",\n  \"price\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "20 - Precio negativo inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Producto Postman\",\n  \"description\": \"Producto ficticio para verificar el CRUD.\",\n  \"category\": \"Pruebas Postman\",\n  \"price\": -1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "21 - Precio de tipo texto inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Producto Postman\",\n  \"description\": \"Producto ficticio para verificar el CRUD.\",\n  \"category\": \"Pruebas Postman\",\n  \"price\": \"15.50\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "22 - Nombre de producto vacío",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \" \",\n  \"description\": \"Producto ficticio para verificar el CRUD.\",\n  \"category\": \"Pruebas Postman\",\n  \"price\": 15.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "23 - Descripción vacía",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Producto Postman\",\n  \"description\": \"\",\n  \"category\": \"Pruebas Postman\",\n  \"price\": 15.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "24 - Categoría vacía",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Producto Postman\",\n  \"description\": \"Producto ficticio para verificar el CRUD.\",\n  \"category\": \"\",\n  \"price\": 15.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "25 - Identificador inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/products/abc"
+          }
+        },
+        {
+          "name": "26 - Producto inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/products/2147483647"
+          }
+        },
+        {
+          "name": "27 - Crear producto como administrador",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Producto creado', () => { const p = pm.response.json().product; pm.expect(p.id).to.be.a('number'); pm.expect(p.price).to.eql(15.5); pm.environment.set('productId', p.id); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Producto Postman\",\n  \"description\": \"Producto ficticio para verificar el CRUD.\",\n  \"category\": \"Pruebas Postman\",\n  \"price\": 15.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "28 - Consultar producto creado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('ID correcto', () => pm.expect(String(pm.response.json().product.id)).to.eql(String(pm.environment.get('productId'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/products/{{productId}}"
+          }
+        },
+        {
+          "name": "29 - Filtrar por categoría",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Todos coinciden con la categoría', () => { const products = pm.response.json().products; pm.expect(products.length).to.be.at.least(1); products.forEach(p => pm.expect(p.category).to.eql('Pruebas Postman')); pm.expect(products.map(p => String(p.id))).to.include(String(pm.environment.get('productId'))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/products?category=Pruebas%20Postman"
+          }
+        },
+        {
+          "name": "30 - Actualizar producto como administrador",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Precio actualizado', () => pm.expect(pm.response.json().product.price).to.eql(29.99));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products/{{productId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Producto Postman\",\n  \"description\": \"Producto ficticio para verificar el CRUD.\",\n  \"category\": \"Pruebas Postman\",\n  \"price\": 29.99\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "31 - A agrega un favorito",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Producto favorito correcto', () => pm.expect(String(pm.response.json().product.id)).to.eql(String(pm.environment.get('productId'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/favorites",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "32 - Favorito duplicado devuelve 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/favorites",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "33 - Favorito de producto inexistente devuelve 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/favorites",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": 2147483647\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "34 - Rechazar userId enviado por el cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenB}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/favorites",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{seedId}}\",\n  \"userId\": \"{{userAId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "35 - A consulta sus favoritos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('El favorito de A permanece', () => { const items = pm.response.json().favorites; pm.expect(items.map(p => String(p.id))).to.include(String(pm.environment.get('productId'))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites"
+          }
+        },
+        {
+          "name": "36 - B no ve los favoritos de A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Lista de favoritos vacía', () => pm.expect(pm.response.json().favorites).to.eql([]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenB}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites"
+          }
+        },
+        {
+          "name": "37 - B no puede quitar el favorito de A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenB}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites/{{productId}}"
+          }
+        },
+        {
+          "name": "38 - El favorito de A permanece tras el intento de B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('El favorito de A permanece', () => { const items = pm.response.json().favorites; pm.expect(items.map(p => String(p.id))).to.include(String(pm.environment.get('productId'))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites"
+          }
+        },
+        {
+          "name": "39 - B agrega el mismo producto a su propia lista",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenB}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/favorites",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "40 - B quita su propio favorito",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenB}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites/{{productId}}"
+          }
+        },
+        {
+          "name": "41 - B queda sin favoritos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Lista de favoritos vacía', () => pm.expect(pm.response.json().favorites).to.eql([]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenB}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites"
+          }
+        },
+        {
+          "name": "42 - A conserva su favorito antes de reiniciar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('El favorito de A permanece', () => { const items = pm.response.json().favorites; pm.expect(items.map(p => String(p.id))).to.include(String(pm.environment.get('productId'))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Después del reinicio",
+      "item": [
+        {
+          "name": "43 - Usuario A persiste después de reiniciar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('JWT y rol correctos', () => { const data = pm.response.json(); pm.expect(data.token).to.be.a('string').and.not.empty; pm.expect(data.user.role).to.eql('usuario'); pm.expect(data.tokenType).to.eql('Bearer'); const payload = JSON.parse(atob(data.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); pm.expect(payload.exp).to.be.above(payload.iat); pm.expect(payload.sub).to.eql(String(data.user.id)); pm.environment.set('tokenA', data.token); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailA}}\",\n  \"password\": \"{{passwordA}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "44 - Producto y actualización persisten después de reiniciar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Producto persistido con precio actualizado', () => { const p = pm.response.json().product; pm.expect(String(p.id)).to.eql(String(pm.environment.get('productId'))); pm.expect(p.price).to.eql(29.99); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/products/{{productId}}"
+          }
+        },
+        {
+          "name": "45 - Favorito de A persiste después de reiniciar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('El favorito de A permanece', () => { const items = pm.response.json().favorites; pm.expect(items.map(p => String(p.id))).to.include(String(pm.environment.get('productId'))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites"
+          }
+        },
+        {
+          "name": "46 - A quita su favorito",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites/{{productId}}"
+          }
+        },
+        {
+          "name": "47 - A consulta la lista vacía",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Lista de favoritos vacía', () => pm.expect(pm.response.json().favorites).to.eql([]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites"
+          }
+        },
+        {
+          "name": "48 - A vuelve a agregar el favorito para verificar la cascada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/favorites",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "49 - Login administrador después de reiniciar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('JWT y rol correctos', () => { const data = pm.response.json(); pm.expect(data.token).to.be.a('string').and.not.empty; pm.expect(data.user.role).to.eql('administrador'); pm.expect(data.tokenType).to.eql('Bearer'); const payload = JSON.parse(atob(data.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); pm.expect(payload.exp).to.be.above(payload.iat); pm.expect(payload.sub).to.eql(String(data.user.id)); pm.environment.set('adminToken', data.token); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "50 - Administrador elimina el producto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/products/{{productId}}"
+          }
+        },
+        {
+          "name": "51 - Producto eliminado ya no existe",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Error claro', () => pm.expect(pm.response.json().error.message).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/products/{{productId}}"
+          }
+        },
+        {
+          "name": "52 - Favoritos se eliminan en cascada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respuesta sin contraseñas ni hashes', () => {",
+                  "  if (pm.response.code === 204) return;",
+                  "  const walk = value => { if (value && typeof value === 'object') Object.entries(value).forEach(([key, item]) => { pm.expect(['password', 'passwordHash', 'password_hash']).not.to.include(key); walk(item); }); };",
+                  "  walk(pm.response.json());",
+                  "});",
+                  "pm.test('Lista de favoritos vacía', () => pm.expect(pm.response.json().favorites).to.eql([]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{baseUrl}}/api/favorites"
+          }
+        }
+      ]
+    }
+  ]
+}
