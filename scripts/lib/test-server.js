@@ -2,15 +2,16 @@ import { fork } from 'node:child_process';
 import { once } from 'node:events';
 import { createServer } from 'node:net';
 import { randomBytes } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDatabase } from '../../src/db/database.js';
 import { seedDatabase } from '../seed.js';
 
-export async function createTestContext() {
-  const directory = await mkdtemp(path.join(os.tmpdir(), 'catalogo-api-'));
+export async function createTestContext({ directoryRoot = os.tmpdir(), retainDatabase = false } = {}) {
+  await mkdir(directoryRoot, { recursive: true });
+  const directory = await mkdtemp(path.join(directoryRoot, 'catalogo-api-'));
   const databasePath = path.join(directory, 'test.sqlite');
   const admin = { name: 'Administrador Pruebas', email: 'admin@example.test', password: randomBytes(18).toString('base64url') };
   const jwtSecret = randomBytes(48).toString('hex');
@@ -24,6 +25,7 @@ export async function createTestContext() {
   let child;
   return {
     directory, databasePath, admin, jwtSecret,
+    get pid() { return child?.pid; },
     baseUrl: `http://127.0.0.1:${port}`,
     async start() {
       child = fork(fileURLToPath(new URL('../../src/server.js', import.meta.url)), [], {
@@ -50,7 +52,7 @@ export async function createTestContext() {
     },
     async cleanup() {
       await this.stop();
-      await rm(directory, { recursive: true, force: true });
+      if (!retainDatabase) await rm(directory, { recursive: true, force: true });
     },
   };
 }

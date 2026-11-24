@@ -180,6 +180,8 @@ Ejemplo de error:
 
 ## Pruebas automáticas
 
+Para preparar una grabación breve, ejecutar `npm run video`. Abre seis etapas con peticiones HTTP reales y avanza al pulsar Enter; utiliza una base de ejemplo separada y reinicia Node.js para comprobar persistencia. El guion paso a paso está en [docs/GUIA_VIDEO.md](docs/GUIA_VIDEO.md). Para ensayar sin pausas: `npm run video:check`.
+
 ```bash
 npm test
 npm run test:postman

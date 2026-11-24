@@ -15,6 +15,8 @@
     "test": "node --test --test-concurrency=1 test/api.test.js",
     "test:postman": "node scripts/test-postman.js",
     "postman:local": "node scripts/postman-local.js",
+    "video": "node scripts/demo-video.js",
+    "video:check": "node scripts/demo-video.js --auto",
     "check": "npm test && npm run test:postman"
   },
   "dependencies": {
